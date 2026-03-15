@@ -178,6 +178,24 @@ private findContours(edges: Uint8Array, width: number, height: number): {x: numb
   return contours;
 }
 
+private getBoundingBox(contour: {x: number, y: number}[]) {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const p of contour) {
+    if (p.x < minX) minX = p.x;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.y > maxY) maxY = p.y;
+  }
+  return {
+    x: minX,
+    y: minY,
+    width: maxX - minX,
+    height: maxY - minY,
+    centerX: Math.round((minX + maxX) / 2),
+    centerY: Math.round((minY + maxY) / 2),
+  };
+}
+
   /**
    * MAIN ALGORITHM TO IMPLEMENT
    * Method for detecting shapes in an image
@@ -197,9 +215,9 @@ private findContours(edges: Uint8Array, width: number, height: number): {x: numb
     const blurred = this.gaussianBlur(gray, imageData.width, imageData.height);
     const edges = this.cannyEdges(blurred, imageData.width, imageData.height);
     const contours = this.findContours(edges, imageData.width, imageData.height);
-    console.log(`found ${contours.length} contours`);
     contours.forEach((c, i) => {
-      console.log(`  contour ${i}: ${c.length} pixels`);
+      const bbox = this.getBoundingBox(c);
+      console.log(`contour ${i}: bbox x=${bbox.x} y=${bbox.y} w=${bbox.width} h=${bbox.height} center=(${bbox.centerX},${bbox.centerY})`);
     });
     // Placeholder implementation
     // console.log("Shape detection not implemented yet");
