@@ -196,6 +196,17 @@ private getBoundingBox(contour: {x: number, y: number}[]) {
   };
 }
 
+private getArea(contour: {x: number, y: number}[]): number {
+  let area = 0;
+  const n = contour.length;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    area += contour[i].x * contour[j].y;
+    area -= contour[j].x * contour[i].y;
+  }
+  return Math.abs(area / 2);
+}
+
   /**
    * MAIN ALGORITHM TO IMPLEMENT
    * Method for detecting shapes in an image
@@ -217,8 +228,14 @@ private getBoundingBox(contour: {x: number, y: number}[]) {
     const contours = this.findContours(edges, imageData.width, imageData.height);
     contours.forEach((c, i) => {
       const bbox = this.getBoundingBox(c);
-      console.log(`contour ${i}: bbox x=${bbox.x} y=${bbox.y} w=${bbox.width} h=${bbox.height} center=(${bbox.centerX},${bbox.centerY})`);
     });
+
+    contours.forEach((c, i) => {
+  const bbox = this.getBoundingBox(c);
+  const area = this.getArea(c);
+  const bboxArea = bbox.width * bbox.height;
+  console.log(`contour ${i}: area=${area.toFixed(0)} bboxArea=${bboxArea}`);
+  });
     // Placeholder implementation
     // console.log("Shape detection not implemented yet");
     // console.log("Image dimensions:", imageData.width, "x", imageData.height);
