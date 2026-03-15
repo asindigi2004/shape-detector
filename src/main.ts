@@ -62,6 +62,83 @@ private gaussianBlur(gray: Float32Array, width: number, height: number): Float32
   return result;
 }
 
+private cannyEdges(gray: Float32Array, width: number, height: number): Uint8Array {
+  const sobelX = [-1,0,1,-2,0,2,-1,0,1];
+  const sobelY = [-1,-2,-1,0,0,0,1,2,1];
+  const magnitude = new Float32Array(gray.length);
+  const direction = new Float32Array(gray.length);
+  let maxMag = 0;
+
+  // Step 1: Sobel gradients
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      let gx = 0, gy = 0;
+      for (let ky = -1; ky <= 1; ky++) {
+        for (let kx = -1; kx <= 1; kx++) {
+          const idx = (y + ky) * width + (x + kx);
+          const k = (ky + 1) * 3 + (kx + 1);
+          gx += gray[idx] * sobelX[k];
+          gy += gray[idx] * sobelY[k];
+        }
+      }
+      const idx = y * width + x;
+      magnitude[idx] = Math.sqrt(gx * gx + gy * gy);
+      direction[idx] = Math.atan2(gy, gx);
+      if (magnitude[idx] > maxMag) maxMag = magnitude[idx];
+    }
+  }
+
+  // Step 2: Non-maximum suppression
+  const suppressed = new Float32Array(gray.length);
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      const idx = y * width + x;
+      const angle = ((direction[idx] * 180 / Math.PI) % 180 + 180) % 180;
+      let n1, n2;
+      if ((angle >= 0 && angle < 22.5) || angle >= 157.5) {
+        n1 = magnitude[y * width + x + 1];
+        n2 = magnitude[y * width + x - 1];
+      } else if (angle >= 22.5 && angle < 67.5) {
+        n1 = magnitude[(y+1) * width + x - 1];
+        n2 = magnitude[(y-1) * width + x + 1];
+      } else if (angle >= 67.5 && angle < 112.5) {
+        n1 = magnitude[(y+1) * width + x];
+        n2 = magnitude[(y-1) * width + x];
+      } else {
+        n1 = magnitude[(y+1) * width + x + 1];
+        n2 = magnitude[(y-1) * width + x - 1];
+      }
+      if (magnitude[idx] >= n1 && magnitude[idx] >= n2) {
+        suppressed[idx] = magnitude[idx];
+      }
+    }
+  }
+
+  // Step 3: Double threshold + hysteresis
+  const high = maxMag * 0.15;
+  const low = high * 0.4;
+  const edges = new Uint8Array(gray.length);
+  for (let i = 0; i < suppressed.length; i++) {
+    if (suppressed[i] >= high) edges[i] = 255;
+    else if (suppressed[i] >= low) edges[i] = 128;
+  }
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      const idx = y * width + x;
+      if (edges[idx] === 128) {
+        let hasStrong = false;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (edges[(y+dy)*width+(x+dx)] === 255) hasStrong = true;
+          }
+        }
+        edges[idx] = hasStrong ? 255 : 0;
+      }
+    }
+  }
+  return edges;
+}
+
   /**
    * MAIN ALGORITHM TO IMPLEMENT
    * Method for detecting shapes in an image
@@ -79,8 +156,10 @@ private gaussianBlur(gray: Float32Array, width: number, height: number): Float32
 
     const gray = this.toGrayscale(imageData);
     const blurred = this.gaussianBlur(gray, imageData.width, imageData.height);
-    console.log('pixel 500 before blur:', gray[500]);
-    console.log('pixel 500 after blur:', blurred[500]);
+    const edges = this.cannyEdges(blurred, imageData.width, imageData.height);
+    const edgeCount = edges.filter(v => v === 255).length;
+    const totalPixels = imageData.width * imageData.height;
+    console.log(`edge pixels: ${edgeCount} / ${totalPixels} = ${((edgeCount/totalPixels)*100).toFixed(2)}%`);
     // Placeholder implementation
     // console.log("Shape detection not implemented yet");
     // console.log("Image dimensions:", imageData.width, "x", imageData.height);
