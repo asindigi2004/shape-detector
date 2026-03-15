@@ -45,6 +45,23 @@ private toGrayscale(imageData: ImageData): Float32Array {
     return gray;
   }
 
+private gaussianBlur(gray: Float32Array, width: number, height: number): Float32Array {
+  const kernel = [[1,2,1],[2,4,2],[1,2,1]];
+  const result = new Float32Array(gray.length);
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      let sum = 0;
+      for (let ky = -1; ky <= 1; ky++) {
+        for (let kx = -1; kx <= 1; kx++) {
+          sum += gray[(y + ky) * width + (x + kx)] * kernel[ky + 1][kx + 1];
+        }
+      }
+      result[y * width + x] = sum / 16;
+    }
+  }
+  return result;
+}
+
   /**
    * MAIN ALGORITHM TO IMPLEMENT
    * Method for detecting shapes in an image
@@ -61,15 +78,12 @@ private toGrayscale(imageData: ImageData): Float32Array {
     const shapes: DetectedShape[] = [];
 
     const gray = this.toGrayscale(imageData);
-    console.log('total pixels:', gray.length);
-    console.log('first 5 values:', Array.from(gray.slice(0, 5)));
-    console.log('min:', Math.min(...Array.from(gray)));
-    console.log('max:', Math.max(...Array.from(gray)));
-
-  
+    const blurred = this.gaussianBlur(gray, imageData.width, imageData.height);
+    console.log('pixel 500 before blur:', gray[500]);
+    console.log('pixel 500 after blur:', blurred[500]);
     // Placeholder implementation
-    console.log("Shape detection not implemented yet");
-    console.log("Image dimensions:", imageData.width, "x", imageData.height);
+    // console.log("Shape detection not implemented yet");
+    // console.log("Image dimensions:", imageData.width, "x", imageData.height);
 
     const processingTime = performance.now() - startTime;
 
