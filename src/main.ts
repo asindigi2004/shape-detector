@@ -139,6 +139,45 @@ private cannyEdges(gray: Float32Array, width: number, height: number): Uint8Arra
   return edges;
 }
 
+private findContours(edges: Uint8Array, width: number, height: number): {x: number, y: number}[][] {
+  const visited = new Uint8Array(edges.length);
+  const contours: {x: number, y: number}[][] = [];
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = y * width + x;
+      if (edges[idx] === 255 && !visited[idx]) {
+        // BFS from this edge pixel
+        const contour: {x: number, y: number}[] = [];
+        const stack = [{x, y}];
+        visited[idx] = 1;
+
+        while (stack.length > 0) {
+          const p = stack.pop()!;
+          contour.push(p);
+          // check 8 neighbors
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              if (dx === 0 && dy === 0) continue;
+              const nx = p.x + dx;
+              const ny = p.y + dy;
+              if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+              const ni = ny * width + nx;
+              if (edges[ni] === 255 && !visited[ni]) {
+                visited[ni] = 1;
+                stack.push({x: nx, y: ny});
+              }
+            }
+          }
+        }
+        // only keep contours big enough to be a real shape
+        if (contour.length > 50) contours.push(contour);
+      }
+    }
+  }
+  return contours;
+}
+
   /**
    * MAIN ALGORITHM TO IMPLEMENT
    * Method for detecting shapes in an image
@@ -157,9 +196,11 @@ private cannyEdges(gray: Float32Array, width: number, height: number): Uint8Arra
     const gray = this.toGrayscale(imageData);
     const blurred = this.gaussianBlur(gray, imageData.width, imageData.height);
     const edges = this.cannyEdges(blurred, imageData.width, imageData.height);
-    const edgeCount = edges.filter(v => v === 255).length;
-    const totalPixels = imageData.width * imageData.height;
-    console.log(`edge pixels: ${edgeCount} / ${totalPixels} = ${((edgeCount/totalPixels)*100).toFixed(2)}%`);
+    const contours = this.findContours(edges, imageData.width, imageData.height);
+    console.log(`found ${contours.length} contours`);
+    contours.forEach((c, i) => {
+      console.log(`  contour ${i}: ${c.length} pixels`);
+    });
     // Placeholder implementation
     // console.log("Shape detection not implemented yet");
     // console.log("Image dimensions:", imageData.width, "x", imageData.height);
