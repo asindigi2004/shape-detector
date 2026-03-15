@@ -207,6 +207,35 @@ private getArea(contour: {x: number, y: number}[]): number {
   return Math.abs(area / 2);
 }
 
+private pointToLineDist(p: {x:number,y:number}, a: {x:number,y:number}, b: {x:number,y:number}): number {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  if (dx === 0 && dy === 0) return Math.hypot(p.x - a.x, p.y - a.y);
+  const t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx*dx + dy*dy);
+  return Math.hypot(p.x - (a.x + t*dx), p.y - (a.y + t*dy));
+}
+
+private douglasPeucker(points: {x:number,y:number}[], epsilon: number): {x:number,y:number}[] {
+  if (points.length < 3) return points;
+  let maxDist = 0;
+  let maxIdx = 0;
+  const start = points[0];
+  const end = points[points.length - 1];
+  for (let i = 1; i < points.length - 1; i++) {
+    const dist = this.pointToLineDist(points[i], start, end);
+    if (dist > maxDist) {
+      maxDist = dist;
+      maxIdx = i;
+    }
+  }
+  if (maxDist > epsilon) {
+    const left = this.douglasPeucker(points.slice(0, maxIdx + 1), epsilon);
+    const right = this.douglasPeucker(points.slice(maxIdx), epsilon);
+    return [...left.slice(0, -1), ...right];
+  }
+  return [start, end];
+}
+
   /**
    * MAIN ALGORITHM TO IMPLEMENT
    * Method for detecting shapes in an image
@@ -231,10 +260,17 @@ private getArea(contour: {x: number, y: number}[]): number {
     });
 
     contours.forEach((c, i) => {
-  const bbox = this.getBoundingBox(c);
-  const area = this.getArea(c);
-  const bboxArea = bbox.width * bbox.height;
-  console.log(`contour ${i}: area=${area.toFixed(0)} bboxArea=${bboxArea}`);
+    const bbox = this.getBoundingBox(c);
+    const area = this.getArea(c);
+    const bboxArea = bbox.width * bbox.height;
+    });
+
+    contours.forEach((c, i) => {
+    const area = this.getArea(c);
+    const perimeter = c.length;
+    const circularity = (4 * Math.PI * area) / (perimeter * perimeter);
+    const simplified = this.douglasPeucker(c, c.length * 0.02);
+    console.log(`contour ${i}: vertices=${simplified.length} circularity=${circularity.toFixed(3)}`);
   });
     // Placeholder implementation
     // console.log("Shape detection not implemented yet");
