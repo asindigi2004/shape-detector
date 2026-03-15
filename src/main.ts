@@ -36,6 +36,15 @@ export class ShapeDetector {
     this.ctx = canvas.getContext("2d")!;
   }
 
+private toGrayscale(imageData: ImageData): Float32Array {
+    const data = imageData.data;
+    const gray = new Float32Array(data.length / 4);
+    for (let i = 0; i < data.length; i += 4) {
+      gray[i / 4] = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+    }
+    return gray;
+  }
+
   /**
    * MAIN ALGORITHM TO IMPLEMENT
    * Method for detecting shapes in an image
@@ -44,12 +53,20 @@ export class ShapeDetector {
    *
    * TODO: Implement shape detection algorithm here
    */
+  
   async detectShapes(imageData: ImageData): Promise<DetectionResult> {
     const startTime = performance.now();
 
     // TODO: Implement shape detection algorithm
     const shapes: DetectedShape[] = [];
 
+    const gray = this.toGrayscale(imageData);
+    console.log('total pixels:', gray.length);
+    console.log('first 5 values:', Array.from(gray.slice(0, 5)));
+    console.log('min:', Math.min(...Array.from(gray)));
+    console.log('max:', Math.max(...Array.from(gray)));
+
+  
     // Placeholder implementation
     console.log("Shape detection not implemented yet");
     console.log("Image dimensions:", imageData.width, "x", imageData.height);
